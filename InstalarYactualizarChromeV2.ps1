@@ -12,22 +12,20 @@ function Escribir-Log {
 
 function Buscar-Chrome-En-Registro {
     $subclaves = Get-ChildItem -Path $claveBase
+    $ChromeVersion = $null
     foreach ($subclave in $subclaves) {
         try {
             $propiedades = Get-ItemProperty -Path $subclave.PSPath
-            if ($propiedades.DisplayName -like "*Google Chrome*") {
-                return @{
-                    Ruta = $subclave.PSPath
-                    Version = $propiedades.Version
-                }
+            if ($propiedades.DisplayName -like "Google Chrome") {
+                $global:ChromeVersion = $propiedades.Version #Ponemos la variable $global para que esté disponible fuera de la función
+                break  # Salimos del bucle una vez encontrada
             }
         } catch {
             continue
         }
     }
-    return $null
 }
-
+Read-Host
 function Obtener-Version-Remota {
     try {
         $url = "https://versionhistory.googleapis.com/v1/chrome/platforms/win64/channels/stable/versions"
@@ -40,7 +38,7 @@ function Obtener-Version-Remota {
     }
 }
 
-function Instalar-Chrome {
+<#function Instalar-Chrome {
     $URLConsulta = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
     $rutaDescarga = "c:\temp\chrome_installer.exe"
 
@@ -53,16 +51,37 @@ function Instalar-Chrome {
     } catch {
         Escribir-Log "Error durante la descarga o instalación: $_"
     }
-}
+}#>
+function Instalar-Chrome {
+    $URLConsulta = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
+    $rutaDescarga = "C:\Temp\chrome_installer.exe"
 
+    # Crear carpeta si no existe
+    if (-not (Test-Path "C:\Temp")) {
+        New-Item -Path "C:\" -Name "Temp" -ItemType Directory | Out-Null
+    }
+
+    try {
+        Invoke-WebRequest -Uri $URLConsulta -OutFile $rutaDescarga
+        Escribir-Log "Instalador de Chrome descargado correctamente."
+
+        # Ejecutar el instalador en modo silencioso (actualiza si ya está instalado)
+        Start-Process -FilePath $rutaDescarga -ArgumentList "/silent", "/install" -Wait
+        Escribir-Log "Chrome instalado o actualizado correctamente."
+
+        Remove-Item $rutaDescarga -Force
+    } catch {
+        Escribir-Log "Error durante la descarga o instalación: $_"
+    }
+}
 # Inicio
 Escribir-Log "----- INICIO DEL PROCESO DE INSTALACIÓN O ACTUALIZACIÓN DE CHROME -----"
 
-$InformacionChrome = Buscar-Chrome-En-Registro
+$ChromeEnRegistro = Buscar-Chrome-En-Registro
 $versionRemota = Obtener-Version-Remota
 
-if ($InformacionChrome) {
-    Escribir-Log "Chrome detectado en registro: $($InformacionChrome.Version)"
+if ($ChromeVersion) {
+    Escribir-Log "Chrome detectado en registro: $($ChromeVersion)"
 } else {
     Escribir-Log "Chrome no encontrado en registro."
 }
@@ -71,12 +90,33 @@ if ($versionRemota) {
     Escribir-Log "Última versión disponible: $versionRemota"
 }
 
-if (-not $InformacionChrome) {
+if (-not $ChromeVersion) {
     Escribir-Log "Chrome no está instalado. Procediendo a instalar..."
     Instalar-Chrome
-} elseif ([version]$InformacionChrome.Version -lt [version]$versionRemota) {
+    
+} elseif ($ChromeVersion -lt $versionRemota) {
     Escribir-Log "Chrome desactualizado. Procediendo a actualizar..."
-    Instalar-Chrome
+    #Instalar-Chrome
+    $URLConsulta = "https://dl.google.com/chrome/install/latest/chrome_installer.exe"
+    $rutaDescarga = "C:\Temp\chrome_installer.exe"
+
+    # Crear carpeta si no existe
+    if (-not (Test-Path "C:\Temp")) {
+        New-Item -Path "C:\" -Name "Temp" -ItemType Directory | Out-Null
+    }
+
+    try {
+        Invoke-WebRequest -Uri $URLConsulta -OutFile $rutaDescarga
+        Escribir-Log "Instalador de Chrome descargado correctamente."
+
+        # Ejecutar el instalador en modo silencioso (actualiza si ya está instalado)
+        Start-Process -FilePath $rutaDescarga -ArgumentList "/silent", "/install" -Wait
+        Escribir-Log "Chrome instalado o actualizado correctamente."
+
+        Remove-Item $rutaDescarga -Force
+    } catch {
+        Escribir-Log "Error durante la descarga o instalación: $_"
+    }
 } else {
     Escribir-Log "Chrome ya está actualizado."
 }
