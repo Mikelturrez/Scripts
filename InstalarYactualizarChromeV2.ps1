@@ -1,5 +1,6 @@
 ﻿# Ruta base del registro
-$claveBase = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+$claveBase32 = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+$ClaveBase64 = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
 
 # Ruta del log
 $logPath = "c:\temp\chrome_update_log.txt"
@@ -11,7 +12,8 @@ function Escribir-Log {
 }
 
 function Buscar-Chrome-En-Registro {
-    $subclaves = Get-ChildItem -Path $claveBase
+    $subclaves = Get-ChildItem -Path $claveBase32
+    $subclaves += Get-ChildItem -Path $ClaveBase64
     $ChromeVersion = $null
     foreach ($subclave in $subclaves) {
         try {
